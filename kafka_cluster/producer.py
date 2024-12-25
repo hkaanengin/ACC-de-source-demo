@@ -19,23 +19,15 @@ BASE_URL = "https://randomuser.me/api/?nat=tr"
 
 class KafkaProducer:
     def __init__(self, bootstrap_servers: str, topic: str):
-        """
-        Initialize the Kafka producer
-        
-        Args:
-            bootstrap_servers: Comma-separated list of host:port pairs
-            topic: The Kafka topic to produce to
-        """
         self.topic = topic
         try:
             self.producer = KafkaProducer(
                 bootstrap_servers=bootstrap_servers,
                 value_serializer=lambda x: json.dumps(x).encode('utf-8'),
-                # Enable basic error handling and retries
                 retries=3,
                 acks='all',
-                batch_size=16384,  # Optimize batch size for better throughput
-                linger_ms=100      # Wait up to 100ms to batch messages
+                batch_size=16384,
+                linger_ms=100
             )
             logger.info(f"Successfully connected to Kafka at {bootstrap_servers}")
         except Exception as e:
@@ -43,19 +35,12 @@ class KafkaProducer:
             raise
 
     def send_messages(self, messages: List[Dict[str, Any]]) -> None:
-        """
-        Send multiple messages to the Kafka topic
-        
-        Args:
-            messages: List of dictionaries containing the messages to be sent
-        """
         try:
             futures = []
             for message in messages:
                 future = self.producer.send(self.topic, value=message)
                 futures.append(future)
             
-            # Wait for all messages to be delivered
             for future in futures:
                 record_metadata = future.get(timeout=10)
                 
@@ -77,18 +62,16 @@ def populate_user_data() -> Dict[str, Any]:
         current_time = datetime.utcnow()
         
         return {
-            # Metadata for partitioning
             "year": current_time.year,
             "month": current_time.month,
             "day": current_time.day,
             "hour": current_time.hour,
             "timestamp": current_time.isoformat(),
             
-            # user data
             "user_id": user_data['login']['uuid'],
             "user_name": f"{user_data['name']['first']} {user_data['name']['last']}",
             "date_of_birth": user_data['dob']['date'],
-            "age": int(user_data['dob']['age']),  # Ensure integer type
+            "age": int(user_data['dob']['age']),
             "gender": user_data['gender'],
             "nationality": user_data['nat'],
             "registration_number": user_data['login']['username'],
@@ -97,12 +80,12 @@ def populate_user_data() -> Dict[str, Any]:
                 "city": user_data['location']['city'],
                 "state": user_data['location']['state'],
                 "country": user_data['location']['country'],
-                "postcode": str(user_data['location']['postcode'])  # Ensure string type
+                "postcode": str(user_data['location']['postcode'])
             },
             "email": user_data['email'],
             "phone_number": user_data['phone'],
             "picture": user_data['picture']['large'],
-            "registered_age": int(user_data['registered']['age'])  # Ensure integer type
+            "registered_age": int(user_data['registered']['age'])
         }
 
 def generate_batch(batch_size: int = 100) -> List[Dict[str, Any]]:
@@ -111,23 +94,20 @@ def generate_batch(batch_size: int = 100) -> List[Dict[str, Any]]:
         
 # Example usage
 if __name__ == "__main__":
-    # Create producer instance
     producer = KafkaProducer(
         bootstrap_servers=os.getenv('KAFKA_BOOTSTRAP_SERVERS', 'localhost:9092'),
         topic=os.getenv('KAFKA_TOPIC', 'user-data')
     )
     
     try:
-        while True:  # Continuous production of data
-            # Generate and send a batch of messages
+        while True:
             batch = generate_batch(batch_size=int(os.getenv('BATCH_SIZE', '100')))
             producer.send_messages(batch)
             
-            # Wait a bit before sending the next batch
-            time.sleep(random.uniform(1, 5))  # Random delay between 1-5 seconds
+            
+            time.sleep(random.uniform(1, 5))
             
     except KeyboardInterrupt:
         logger.info("Stopping data production...")
     finally:
-        # Always close the producer
         producer.close()
