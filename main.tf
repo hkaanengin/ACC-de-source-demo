@@ -1,4 +1,3 @@
-# main.tf
 terraform {
   required_providers {
     aws = {
@@ -13,21 +12,15 @@ provider "aws" {
   region = var.aws_region
 }
 
-module "s3" {
-  source      = "./modules/s3"
-  bucket_name = var.bucket_name
-  environment = var.environment
-}
-
-module "iam" {
-  source      = "./modules/iam"
-  environment = var.environment
-  bucket_arn  = module.s3.bucket_arn
-}
-
-module "athena" {
-  source         = "./modules/athena"
-  environment    = var.environment
-  s3_bucket_name = module.s3.bucket_name
-  database_name  = var.src_database_name
+module "kafka_sink" {
+  source = "./modules/kafka_sink"
+  
+  project_name = var.project_name
+  environment  = var.environment
+  kafka_topic  = var.kafka_topic
+  
+  tags = {
+    Purpose = "Kafka Data Pipeline"
+    Owner   = "Data Team"
+  }
 }

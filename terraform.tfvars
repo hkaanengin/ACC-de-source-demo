@@ -1,4 +1,4 @@
-aws_region = "us-east-1"
+aws_region = "eu-west-1"
 environment = "prod"
-bucket_name = "my-kafka-sink-bucket"
-src_database_name = "kafka_data"
+project_name = "kafka-s3"
+kafka_topic = "user-data"
